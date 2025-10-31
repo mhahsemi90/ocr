@@ -1,0 +1,169 @@
+<!-- templates/ocr_app/search_results.html -->
+{% extends 'ocr_app/base.html' %}
+
+{% block page_title %}نتایج جستجو{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>نتایج جستجو</h1>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="location.href='{% url 'search_documents' %}'">
+            🔍 جستجوی جدید
+        </button>
+
+        <div style="color: #7f8c8d;">
+            <strong>عبارت جستجو:</strong> "{{ query }}"
+        </div>
+    </div>
+</div>
+
+<!-- نتایج جستجو -->
+<div class="search-results">
+    <!-- نتایج افراد -->
+    {% if persons %}
+    <div class="results-section" style="margin-bottom: 30px;">
+        <h3 style="color: #2c3e50; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #3498db;">
+            👥 افراد یافت شده ({{ persons|length }})
+        </h3>
+
+        <div class="persons-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+            {% for person in persons %}
+            <div class="person-card" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;">
+                <h4 style="color: #2c3e50; margin-bottom: 10px;">{{ person.first_name }} {{ person.last_name }}</h4>
+                <p style="margin: 5px 0;"><strong>کد ملی:</strong> {{ person.national_id }}</p>
+                <p style="margin: 5px 0;"><strong>شرح پرونده:</strong> {{ person.case_description|truncatewords:15 }}</p>
+                <p style="margin: 5px 0;"><strong>تعداد اسناد:</strong> {{ person.get_documents_count }}</p>
+
+                <div class="person-actions" style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="location.href='{% url 'person_detail' person.id %}'">
+                        📂 مشاهده پرونده
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- نتایج اسناد -->
+    {% if documents %}
+    <div class="results-section" style="margin-bottom: 30px;">
+        <h3 style="color: #2c3e50; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #27ae60;">
+            📄 اسناد یافت شده ({{ documents|length }})
+        </h3>
+
+        <div class="documents-list">
+            {% for document in documents %}
+            <div class="document-item"
+                 style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e0e0e0; cursor: pointer;"
+                 onclick="showDocumentContent({{ document.id }})"
+                 onmouseover="this.style.background='#f8f9fa'"
+                 onmouseout="this.style.background='white'">
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div style="flex: 1;">
+                        <h5 style="margin: 0 0 5px 0; color: #2c3e50;">{{ document.file_name }}</h5>
+                        <p style="margin: 0; color: #7f8c8d; font-size: 14px;">
+                            <strong>مالک:</strong> {{ document.person.first_name }} {{ document.person.last_name }}
+                            {% if document.folder %}
+                            | <strong>پوشه:</strong> {{ document.folder.name }}
+                            {% endif %}
+                        </p>
+                        {% if document.description %}
+                        <p style="margin: 5px 0 0 0; color: #666; font-size: 13px;">
+                            {{ document.description|truncatewords:20 }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div style="text-align: left;">
+                        {% if document.ocr_processed %}
+                        <span style="color: #27ae60; font-size: 12px;">✓ پردازش شده</span>
+                        {% else %}
+                        <span style="color: #e74c3c; font-size: 12px;">⏳ در انتظار</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- پیام عدم یافتن نتیجه -->
+    {% if not persons and not documents %}
+    <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 10px;">
+        <div style="font-size: 72px; margin-bottom: 20px;">🔍</div>
+        <h3 style="color: #2c3e50; margin-bottom: 15px;">نتیجه‌ای یافت نشد</h3>
+        <p style="color: #7f8c8d; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+            هیچ فرد یا سندی با عبارت "{{ query }}" یافت نشد.<br>
+            لطفاً عبارت جستجو را تغییر دهید یا از جستجوی پیشرفته استفاده کنید.
+        </p>
+        <div>
+            <button class="btn btn-primary" onclick="location.href='{% url 'search_documents' %}'">
+                🔍 جستجوی پیشرفته
+            </button>
+            <button class="btn btn-success" onclick="location.href='{% url 'home' %}'">
+                ➕ افزودن فرد جدید
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal نمایش محتوای سند -->
+<div id="documentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
+    <div style="background: white; width: 80%; max-width: 800px; margin: 50px auto; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;">
+        <h3 id="documentTitle" style="color: #2c3e50; margin-bottom: 20px;"></h3>
+        <div id="documentContent"></div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn" onclick="hideDocumentModal()"
+                    style="background: #95a5a6; color: white; padding: 10px 20px;">بستن</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function showDocumentContent(documentId) {
+        const response = await fetch(`/document-content/${documentId}/`);
+        const data = await response.json();
+
+        document.getElementById('documentTitle').textContent = data.file_name;
+
+        let content = `
+            <div style="margin-bottom: 20px;">
+                <p><strong>👤 مالک:</strong> ${data.person_name}</p>
+                ${data.description ? `<p><strong>📝 شرح:</strong> ${data.description}</p>` : ''}
+            </div>
+        `;
+
+        if (data.processed) {
+            content += `
+                <div style="margin-bottom: 15px;">
+                    <p><strong>📊 دقت استخراج:</strong> <span style="color: #27ae60;">${(data.confidence * 100).toFixed(2)}%</span></p>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; border: 1px solid #e0e0e0;">
+                    <h4 style="color: #2c3e50; margin-bottom: 15px;">متن استخراج شده:</h4>
+                    <div style="white-space: pre-wrap; line-height: 1.6; text-align: right; direction: rtl;">
+                        ${data.extracted_text || 'متنی یافت نشد'}
+                    </div>
+                </div>
+            `;
+        } else {
+            content += `
+                <div style="text-align: center; padding: 40px; color: #e74c3c;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">⏳</div>
+                    <h4>این سند هنوز پردازش نشده است</h4>
+                    <p>لطفاً چند لحظه دیگر مجدداً بررسی کنید.</p>
+                </div>
+            `;
+        }
+
+        document.getElementById('documentContent').innerHTML = content;
+        document.getElementById('documentModal').style.display = 'block';
+    }
+
+    function hideDocumentModal() {
+        document.getElementById('documentModal').style.display = 'none';
+    }
+</script>
+{% endblock %}

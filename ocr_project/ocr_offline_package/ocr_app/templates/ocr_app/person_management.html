@@ -1,0 +1,204 @@
+<!-- templates/ocr_app/person_management.html -->
+{% extends 'ocr_app/base.html' %}
+
+{% block page_title %}مدیریت افراد و پرونده‌ها{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>مدیریت افراد</h1>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="showCreatePersonModal()">
+            ➕ افزودن فرد جدید
+        </button>
+
+        <div style="display: flex; align-items: center;">
+            <input type="text" id="searchInput" placeholder="جستجو بر اساس نام، نام خانوادگی یا کد ملی..."
+                   style="padding: 10px 15px; border: 1px solid #ddd; border-radius: 5px; margin-left: 10px; width: 300px; font-size: 14px;">
+            <button class="btn btn-success" onclick="searchPersons()">
+                🔍 جستجو
+            </button>
+            <button class="btn" onclick="clearSearch()" style="background: #95a5a6; color: white; margin-left: 10px;">
+                پاک کردن
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- بخش جستجو و نتایج -->
+<div id="searchSection">
+    <!-- پیام خوشامدگویی -->
+    <div id="welcomeMessage" style="text-align: center; padding: 60px 20px; background: white; border-radius: 10px; margin-bottom: 20px;">
+        <div style="font-size: 72px; margin-bottom: 20px;">🔍</div>
+        <h2 style="color: #2c3e50; margin-bottom: 15px;">به سیستم مدیریت اسناد خوش آمدید</h2>
+        <p style="color: #7f8c8d; font-size: 16px; line-height: 1.6;">
+            برای مشاهده افراد، لطفاً از کادر جستجوی بالا استفاده کنید.<br>
+            می‌توانید بر اساس نام، نام خانوادگی یا کد ملی جستجو کنید.
+        </p>
+    </div>
+
+    <!-- نتایج جستجو -->
+    <div id="searchResults" style="display: none;">
+        <h3 style="color: #2c3e50; margin-bottom: 20px;">نتایج جستجو</h3>
+        <div class="persons-grid" id="personsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+            <!-- نتایج با JavaScript پر می‌شوند -->
+        </div>
+
+        <div id="noResults" style="display: none; text-align: center; padding: 40px;">
+            <div style="font-size: 48px; margin-bottom: 15px;">😕</div>
+            <h4 style="color: #7f8c8d; margin-bottom: 10px;">نتیجه‌ای یافت نشد</h4>
+            <p style="color: #95a5a6;">لطفاً عبارت جستجوی خود را تغییر دهید یا فرد جدیدی اضافه کنید.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ایجاد فرد جدید -->
+<div id="createPersonModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
+    <div style="background: white; width: 500px; margin: 100px auto; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <h3 style="color: #2c3e50; margin-bottom: 20px;">افزودن فرد جدید</h3>
+        <form id="createPersonForm">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">نام:</label>
+                <input type="text" name="first_name" placeholder="نام" required
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">نام خانوادگی:</label>
+                <input type="text" name="last_name" placeholder="نام خانوادگی" required
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">کد ملی:</label>
+                <input type="text" name="national_id" placeholder="کد ملی" required
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">شرح پرونده:</label>
+                <textarea name="case_description" placeholder="شرح پرونده"
+                          style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">💾 ذخیره</button>
+                <button type="button" class="btn" onclick="hideCreatePersonModal()"
+                        style="flex: 1; background: #95a5a6; color: white;">❌ لغو</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // توابع مدیریت Modal
+    function showCreatePersonModal() {
+        document.getElementById('createPersonModal').style.display = 'block';
+    }
+
+    function hideCreatePersonModal() {
+        document.getElementById('createPersonModal').style.display = 'none';
+    }
+
+    // جستجوی افراد
+    function searchPersons() {
+        const query = document.getElementById('searchInput').value.trim();
+
+        if (!query) {
+            alert('لطفاً عبارت جستجو را وارد کنید');
+            return;
+        }
+
+        // نمایش loading
+        document.getElementById('welcomeMessage').style.display = 'none';
+        document.getElementById('searchResults').style.display = 'block';
+        document.getElementById('personsGrid').innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1;"><p>در حال جستجو...</p></div>';
+
+        // جستجوی AJAX
+        fetch(`/search/?q=${encodeURIComponent(query)}&type=people`)
+            .then(response => response.text())
+            .then(html => {
+                // اینجا باید HTML برگشتی را parse کنیم و فقط بخش نتایج را نمایش دهیم
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+
+                const results = tempDiv.querySelector('.persons-grid') || tempDiv.querySelector('#personsGrid');
+
+                if (results && results.innerHTML.trim()) {
+                    document.getElementById('personsGrid').innerHTML = results.innerHTML;
+                    document.getElementById('noResults').style.display = 'none';
+                } else {
+                    document.getElementById('personsGrid').innerHTML = '';
+                    document.getElementById('noResults').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('personsGrid').innerHTML = '';
+                document.getElementById('noResults').style.display = 'block';
+            });
+    }
+
+    // جستجو با Enter
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchPersons();
+        }
+    });
+
+    // پاک کردن جستجو
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('welcomeMessage').style.display = 'block';
+        document.getElementById('searchResults').style.display = 'none';
+    }
+
+    // مدیریت فرم ایجاد فرد
+    document.getElementById('createPersonForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData);
+
+        try {
+            const response = await fetch('/create-person/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('فرد با موفقیت ذخیره شد');
+                hideCreatePersonModal();
+                // اگر در حال جستجو هستیم، جستجو را مجدد انجام دهیم
+                if (document.getElementById('searchResults').style.display === 'block') {
+                    searchPersons();
+                }
+            } else {
+                alert('خطا: ' + result.error);
+            }
+        } catch (error) {
+            alert('خطا در ارتباط با سرور');
+            console.error('Error:', error);
+        }
+    };
+
+    // بستن Modal با کلیک خارج از آن
+    document.getElementById('createPersonModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideCreatePersonModal();
+        }
+    });
+
+    // اگر در URL پارامتر جستجو وجود دارد، جستجو را انجام بده
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get('q');
+    if (searchQuery) {
+        document.getElementById('searchInput').value = searchQuery;
+        setTimeout(() => searchPersons(), 100);
+    }
+</script>
+{% endblock %}

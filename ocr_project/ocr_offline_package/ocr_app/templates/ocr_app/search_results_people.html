@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نتایج جستجو</title>
+    <style>
+        body { font-family: Tahoma; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .search-types { margin: 20px 0; }
+        .search-type-btn { padding: 10px 20px; margin: 0 5px; border: 1px solid #ddd; background: white; cursor: pointer; }
+        .search-type-btn.active { background: #3498db; color: white; }
+        .result-item { background: white; padding: 20px; border-radius: 10px; margin: 10px 0; }
+        .document-item { padding: 10px; border: 1px solid #eee; margin: 5px 0; cursor: pointer; }
+        .document-item:hover { background: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>نتایج جستجو برای: "{{ query }}"</h1>
+
+            <div class="search-types">
+                <button class="search-type-btn {% if search_type == 'people' %}active{% endif %}"
+                        onclick="location.href='?q={{ query }}&type=people'">
+                    جستجو بر اساس افراد
+                </button>
+                <button class="search-type-btn {% if search_type == 'documents' %}active{% endif %}"
+                        onclick="location.href='?q={{ query }}&type=documents'">
+                    جستجو بر اساس اسناد
+                </button>
+            </div>
+        </div>
+
+        {% if search_type == 'people' %}
+            <!-- نتایج بر اساس افراد -->
+            {% for result in results %}
+            <div class="result-item">
+                <h3>{{ result.person.name }} - کد ملی: {{ result.person.national_id }}</h3>
+
+                {% if result.documents %}
+                    <h4>اسناد مرتبط:</h4>
+                    {% for doc in result.documents %}
+                    <div class="document-item" onclick="showDocumentContent({{ doc.id }})">
+                        📄 {{ doc.name }} {% if doc.processed %}<span style="color: green;">✓</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>هیچ سند مرتبطی یافت نشد</p>
+                {% endif %}
+
+                <button onclick="location.href='{% url 'person_detail' result.person.id %}'"
+                        style="margin-top: 10px; padding: 8px 15px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    مشاهده پرونده کامل
+                </button>
+            </div>
+            {% empty %}
+            <div class="result-item">
+                <p>هیچ نتیجه‌ای یافت نشد</p>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Modal نمایش محتوای سند -->
+    <div id="documentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+        <div style="background: white; width: 80%; max-width: 800px; margin: 50px auto; padding: 20px; border-radius: 10px;">
+            <h3 id="documentTitle"></h3>
+            <div id="documentContent" style="max-height: 400px; overflow-y: auto;"></div>
+            <button onclick="hideDocumentModal()" style="margin-top: 20px; padding: 10px 20px;">بستن</button>
+        </div>
+    </div>
+
+    <script>
+        async function showDocumentContent(documentId) {
+            const response = await fetch(`/document-content/${documentId}/`);
+            const data = await response.json();
+
+            document.getElementById('documentTitle').textContent = data.file_name;
+
+            let content = `<p><strong>مالک:</strong> ${data.person_name}</p>`;
+            if (data.description) {
+                content += `<p><strong>شرح:</strong> ${data.description}</p>`;
+            }
+            if (data.processed) {
+                content += `<p><strong>متن استخراج شده:</strong></p>
+                           <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                               ${data.extracted_text || 'متنی یافت نشد'}
+                           </div>
+                           <p><strong>دقت استخراج:</strong> ${(data.confidence * 100).toFixed(2)}%</p>`;
+            } else {
+                content += '<p style="color: orange;">این سند هنوز پردازش نشده است</p>';
+            }
+
+            document.getElementById('documentContent').innerHTML = content;
+            document.getElementById('documentModal').style.display = 'block';
+        }
+
+        function hideDocumentModal() {
+            document.getElementById('documentModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
