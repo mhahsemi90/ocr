@@ -1,0 +1,662 @@
+<!-- templates/ocr_app/modals.html -->
+<!-- Modal ایجاد پوشه -->
+<div id="createFolderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
+    <div style="background: white; width: 500px; margin: 100px auto; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <h3 style="color: #2c3e50; margin-bottom: 20px;">ایجاد پوشه جدید</h3>
+        <form id="createFolderForm">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">نام پوشه:</label>
+                <input type="text" name="name" placeholder="نام پوشه" required
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">توضیحات:</label>
+                <textarea name="description" placeholder="توضیحات"
+                          style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">پوشه والد:</label>
+                <select name="parent_folder_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">ریشه (بدون والد)</option>
+                </select>
+                <small style="color: #7f8c8d;">پیش‌فرض: پوشه فعلی. برای ایجاد در ریشه، "ریشه" را انتخاب کنید</small>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">📁 ایجاد پوشه</button>
+                <button type="button" class="btn" onclick="hideCreateFolderModal()"
+                        style="flex: 1; background: #95a5a6; color: white;">❌ لغو</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal آپلود فایل -->
+<div id="uploadModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
+    <div style="background: white; width: 600px; margin: 50px auto; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <h3 style="color: #2c3e50; margin-bottom: 20px;">آپلود فایل جدید</h3>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">انتخاب فایل‌ها:</label>
+                <input type="file" name="files" multiple required
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <small style="color: #7f8c8d;">می‌توانید چند فایل را همزمان انتخاب کنید</small>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">شرح سند:</label>
+                <textarea name="description" placeholder="شرح سند"
+                          style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">پوشه مقصد:</label>
+                <select name="folder_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">ریشه (ذخیره مستقیم)</option>
+                </select>
+                <small style="color: #7f8c8d;">پیش‌فرض: پوشه فعلی. برای ذخیره در ریشه، "ریشه" را انتخاب کنید</small>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-success" style="flex: 1;">📤 آپلود و اسکن</button>
+                <button type="button" class="btn" onclick="hideUploadModal()"
+                        style="flex: 1; background: #95a5a6; color: white;">❌ لغو</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal نمایش محتوای سند -->
+<div id="documentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
+    <div style="background: white; width: 95%; max-width: 1200px; margin: 20px auto; padding: 25px; border-radius: 10px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); max-height: 95vh; overflow: hidden; display: flex; flex-direction: column;">
+        <!-- هدر Modal -->
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0;">
+            <h3 id="documentTitle" style="color: #2c3e50; margin: 0; flex: 1;"></h3>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button id="showOriginalBtn" class="btn" style="background: #3498db; color: white; padding: 8px 12px; font-size: 14px;">📄 فایل اصلی</button>
+                <button id="showTextBtn" class="btn" style="background: #27ae60; color: white; padding: 8px 12px; font-size: 14px;">📝 متن استخراج شده</button>
+                <button id="zoomOutBtn" class="btn" style="background: #f39c12; color: white; padding: 8px 12px; font-size: 14px;">🔍 کوچک</button>
+                <button id="zoomInBtn" class="btn" style="background: #f39c12; color: white; padding: 8px 12px; font-size: 14px;">🔍 بزرگ</button>
+                <button id="resetZoomBtn" class="btn" style="background: #95a5a6; color: white; padding: 8px 12px; font-size: 14px;">🔄 بازنشانی</button>
+                <button id="copyTextBtn" class="btn" style="background: #9b59b6; color: white; padding: 8px 12px; font-size: 14px;">📋 کپی متن</button>
+                <button id="downloadBtn" class="btn" style="background: #e67e22; color: white; padding: 8px 12px; font-size: 14px;">💾 دانلود</button>
+                <button class="btn" onclick="hideDocumentModal()" style="background: #e74c3c; color: white; padding: 8px 12px; font-size: 14px;">❌ بستن</button>
+            </div>
+        </div>
+
+        <!-- اطلاعات سند -->
+        <div id="documentInfo" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-right: 4px solid #3498db;">
+            <!-- اطلاعات با JavaScript پر می‌شود -->
+        </div>
+
+        <!-- محتوای سند -->
+        <div id="documentContent" style="flex: 1; background: #f8f9fa; border: 2px solid #e0e0e0; border-radius: 8px; padding: 20px; overflow: auto; position: relative; min-height: 400px; display: flex; align-items: flex-start; justify-content: center;">
+            <!-- محتوا با JavaScript پر می‌شود -->
+        </div>
+
+        <!-- وضعیت پردازش -->
+        <div id="processingStatus" style="margin-top: 15px; padding: 10px; text-align: center; border-radius: 5px;">
+            <!-- وضعیت با JavaScript پر می‌شود -->
+        </div>
+    </div>
+</div>
+
+<style>
+    .zoom-level-1 { transform: scale(1); }
+    .zoom-level-2 { transform: scale(1.2); }
+    .zoom-level-3 { transform: scale(1.4); }
+    .zoom-level-4 { transform: scale(1.6); }
+    .zoom-level-5 { transform: scale(1.8); }
+    .zoom-level-6 { transform: scale(2); }
+    .zoom-level-7 { transform: scale(2.2); }
+    .zoom-level-8 { transform: scale(2.4); }
+    .zoom-level-9 { transform: scale(2.6); }
+    .zoom-level-10 { transform: scale(2.8); }
+
+    .image-container {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        padding: 10px;
+    }
+
+    .image-content {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        background: white;
+        border-radius: 5px;
+    }
+
+    .text-content {
+        width: 100%;
+        height: auto;
+        min-height: 100%;
+        white-space: pre-wrap;
+        text-align: right;
+        direction: rtl;
+        font-family: 'Tahoma', Arial, sans-serif;
+        line-height: 1.8;
+        padding: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .pdf-download-option {
+        text-align: center;
+        padding: 40px;
+    }
+
+    .pdf-option-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .content-zoomed {
+        position: fixed;
+        top: 50px;
+        left: 50px;
+        right: 50px;
+        bottom: 50px;
+        z-index: 3000;
+        background: white;
+        border: 3px solid #3498db;
+        border-radius: 10px;
+        box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        padding: 30px;
+        overflow: auto;
+    }
+
+    .active-tab {
+        box-shadow: 0 0 0 2px #2c3e50;
+        font-weight: bold;
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<script>
+    let currentZoomLevel = 1;
+    let isFullScreen = false;
+    let currentView = 'original';
+    let currentDocumentData = null;
+
+    // توابع نمایش و مخفی کردن مودال‌ها
+    function showCreateFolderModal() {
+        document.getElementById('createFolderModal').style.display = 'block';
+    }
+
+    function hideCreateFolderModal() {
+        document.getElementById('createFolderModal').style.display = 'none';
+    }
+
+    function showUploadModal() {
+        document.getElementById('uploadModal').style.display = 'block';
+    }
+
+    function hideUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+    }
+
+    function hideDocumentModal() {
+        document.getElementById('documentModal').style.display = 'none';
+        isFullScreen = false;
+        resetZoom();
+        currentView = 'original';
+    }
+
+    // بستن مودال با کلیک خارج از آن
+    document.addEventListener('DOMContentLoaded', function() {
+        // برای مودال ایجاد پوشه
+        document.getElementById('createFolderModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideCreateFolderModal();
+            }
+        });
+
+        // برای مودال آپلود فایل
+        document.getElementById('uploadModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideUploadModal();
+            }
+        });
+
+        // برای مودال نمایش سند
+        document.getElementById('documentModal').addEventListener('click', function(e) {
+            if (e.target === this && !isFullScreen) {
+                hideDocumentModal();
+            }
+        });
+
+        // Event Listeners برای دکمه‌های مودال سند
+        document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+        document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+        document.getElementById('resetZoomBtn').addEventListener('click', resetZoom);
+        document.getElementById('copyTextBtn').addEventListener('click', copyText);
+        document.getElementById('downloadBtn').addEventListener('click', downloadFile);
+        document.getElementById('showOriginalBtn').addEventListener('click', () => showOriginalFile(currentDocumentData));
+        document.getElementById('showTextBtn').addEventListener('click', () => showExtractedText(currentDocumentData));
+
+        // بستن Modal با کلید ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (isFullScreen) {
+                    toggleFullScreen();
+                } else if (document.getElementById('documentModal').style.display === 'block') {
+                    hideDocumentModal();
+                } else if (document.getElementById('createFolderModal').style.display === 'block') {
+                    hideCreateFolderModal();
+                } else if (document.getElementById('uploadModal').style.display === 'block') {
+                    hideUploadModal();
+                }
+            }
+        });
+
+        // جلوگیری از بستن مودال با کلیک روی محتوای آن
+        document.querySelectorAll('.modal-content, .modal-content *').forEach(element => {
+            element.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+    });
+
+    // تابع نمایش محتوای سند
+    async function showDocumentContent(documentId) {
+        try {
+            console.log('Loading document content for ID:', documentId);
+            const documentContent = document.getElementById('documentContent');
+
+            // نمایش اسپینر در حال لود
+            documentContent.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #7f8c8d;">
+                    <div class="loading-spinner"></div>
+                    <p style="margin-top: 20px; font-size: 16px;">در حال بارگذاری سند...</p>
+                </div>
+            `;
+
+            const response = await fetch(`/document-content/${documentId}/`);
+            const data = await response.json();
+            console.log('Document data received:', data);
+
+            currentDocumentData = data;
+
+            // تنظیم عنوان
+            document.getElementById('documentTitle').textContent = data.file_name;
+
+            // نمایش اطلاعات سند
+            updateDocumentInfo(data);
+
+            // نمایش محتوای پیش‌فرض (فایل اصلی)
+            showOriginalFile(data);
+
+            // تنظیم وضعیت دکمه‌ها
+            updateButtonStates(data.ocr_processed || data.processed);
+
+            // نمایش Modal
+            document.getElementById('documentModal').style.display = 'block';
+
+        } catch (error) {
+            console.error('Error loading document content:', error);
+            const documentContent = document.getElementById('documentContent');
+            documentContent.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #e74c3c;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
+                    <h4 style="margin-bottom: 10px;">خطا در بارگذاری سند</h4>
+                    <p>${error.message}</p>
+                    <button class="btn" onclick="hideDocumentModal()"
+                            style="background: #e74c3c; color: white; padding: 10px 20px; margin-top: 15px;">
+                        بستن
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // نمایش فایل اصلی - نسخه اصلاح شده برای PDF
+    function showOriginalFile(data) {
+        console.log('Showing original file:', data);
+        currentView = 'original';
+        const documentContent = document.getElementById('documentContent');
+
+        // فعال کردن دکمه فایل اصلی
+        document.getElementById('showOriginalBtn').classList.add('active-tab');
+        document.getElementById('showTextBtn').classList.remove('active-tab');
+
+        const fileExtension = data.file_extension || data.file_type || data.file_name.split('.').pop().toLowerCase();
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
+            // نمایش تصویر با کانتینر مناسب
+            if (data.original_file_url) {
+                documentContent.innerHTML = `
+                    <div class="image-container">
+                        <img src="${data.original_file_url}"
+                             alt="${data.file_name}"
+                             class="image-content zoom-level-${currentZoomLevel}"
+                             ondblclick="toggleFullScreen()"
+                             id="contentDisplay"
+                             style="cursor: zoom-in;"
+                             onload="handleImageLoad(this)"
+                             onerror="handleImageError(this)">
+                    </div>
+                `;
+            } else {
+                showFileNotAvailable();
+            }
+        } else if (fileExtension === 'pdf') {
+            // نمایش گزینه‌های PDF بدون iframe
+            if (data.original_file_url) {
+                showPDFOptions(data.original_file_url);
+            } else {
+                showFileNotAvailable();
+            }
+        } else {
+            // فایل‌های دیگر
+            showFileNotAvailable();
+        }
+    }
+
+    // نمایش گزینه‌های PDF
+    function showPDFOptions(pdfUrl) {
+        const documentContent = document.getElementById('documentContent');
+
+        documentContent.innerHTML = `
+            <div class="pdf-download-option">
+                <div style="font-size: 64px; margin-bottom: 20px;">📄</div>
+                <h4 style="color: #2c3e50; margin-bottom: 10px;">فایل PDF</h4>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">برای مشاهده فایل PDF از گزینه‌های زیر استفاده کنید:</p>
+
+                <div class="pdf-option-buttons">
+                    <button onclick="downloadPDF('${pdfUrl}')"
+                            class="btn"
+                            style="background: #3498db; color: white; padding: 12px 20px;">
+                        📥 دانلود PDF
+                    </button>
+                    <button onclick="viewPDFInNewTab('${pdfUrl}')"
+                            class="btn"
+                            style="background: #27ae60; color: white; padding: 12px 20px;">
+                        👁️ مشاهده در تب جدید
+                    </button>
+                </div>
+
+                <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-right: 4px solid #f39c12;">
+                    <p style="margin: 0; color: #e67e22; font-size: 14px;">
+                        💡 <strong>راهنمایی:</strong> فایل PDF در همین پنجره نمایش داده نمی‌شود.
+                        برای مشاهده فایل، آن را دانلود کنید یا در تب جدید باز کنید.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    // مشاهده PDF در تب جدید
+    function viewPDFInNewTab(pdfUrl) {
+        window.open(pdfUrl, '_blank');
+        showNotification('📄 در حال باز کردن PDF در تب جدید...');
+    }
+
+    // دانلود PDF
+    function downloadPDF(pdfUrl) {
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = currentDocumentData.file_name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showNotification('✅ در حال دانلود PDF...');
+    }
+
+    // نمایش متن استخراج شده - نسخه اصلاح شده
+    function showExtractedText(data) {
+        currentView = 'text';
+        const documentContent = document.getElementById('documentContent');
+
+        // فعال کردن دکمه متن
+        document.getElementById('showOriginalBtn').classList.remove('active-tab');
+        document.getElementById('showTextBtn').classList.add('active-tab');
+
+        const isProcessed = data.ocr_processed || data.processed;
+        const hasText = data.extracted_text && data.extracted_text.trim().length > 0;
+
+        if (isProcessed && hasText) {
+            documentContent.innerHTML = `
+                <div class="text-content zoom-level-${currentZoomLevel}"
+                     id="contentDisplay"
+                     style="cursor: default; user-select: text;">
+                    ${data.extracted_text}
+                </div>
+            `;
+        } else {
+            documentContent.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #e74c3c;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">⏳</div>
+                    <h4 style="margin-bottom: 10px;">متن استخراج شده موجود نیست</h4>
+                    <p>این سند هنوز پردازش نشده است یا متنی استخراج نشده است.</p>
+                    <p>لطفاً چند لحظه صبر کنید و مجدداً بررسی کنید.</p>
+                    ${isProcessed ? '<p style="color: #7f8c8d; margin-top: 10px;">(سند پردازش شده اما متنی استخراج نشده)</p>' : ''}
+                </div>
+            `;
+        }
+    }
+
+    // تابع برای نمایش پیام عدم دسترسی به فایل
+    function showFileNotAvailable() {
+        const documentContent = document.getElementById('documentContent');
+        const isProcessed = currentDocumentData.ocr_processed || currentDocumentData.processed;
+
+        documentContent.innerHTML = `
+            <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                <div style="font-size: 64px; margin-bottom: 20px;">📄</div>
+                <h4>فایل اصلی در دسترس نیست</h4>
+                <p>فایل ممکن است حذف شده باشد یا در مسیر دیگری ذخیره شده باشد.</p>
+                <p>لطفاً از آپلود مجدد فایل اطمینان حاصل کنید.</p>
+                ${isProcessed ? `
+                    <button class="btn" onclick="showExtractedText(currentDocumentData)"
+                            style="background: #27ae60; color: white; padding: 10px 20px; margin-top: 15px;">
+                        📝 مشاهده متن استخراج شده
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // مدیریت لود تصویر
+    function handleImageLoad(imgElement) {
+        console.log('Image loaded successfully');
+        imgElement.style.maxWidth = '100%';
+        imgElement.style.maxHeight = '100%';
+        imgElement.style.objectFit = 'contain';
+    }
+
+    // مدیریت خطای تصویر
+    function handleImageError(imgElement) {
+        console.error('Image load error:', imgElement.src);
+        showFileNotAvailable();
+    }
+
+    // به‌روزرسانی اطلاعات سند
+    function updateDocumentInfo(data) {
+        const documentInfo = document.getElementById('documentInfo');
+        const isProcessed = data.ocr_processed || data.processed;
+        const confidence = data.confidence || data.extraction_confidence || 0;
+
+        documentInfo.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div>
+                    <strong>👤 مالک:</strong> ${data.person_name}
+                </div>
+                <div>
+                    <strong>📁 نوع فایل:</strong> ${(data.file_extension || data.file_type || 'نامشخص').toUpperCase()}
+                </div>
+                <div>
+                    <strong>📅 وضعیت:</strong>
+                    ${isProcessed ?
+                        '<span style="color: #27ae60;">✓ پردازش شده</span>' :
+                        '<span style="color: #e74c3c;">⏳ در انتظار پردازش</span>'
+                    }
+                </div>
+                ${isProcessed ? `
+                <div>
+                    <strong>🎯 دقت استخراج:</strong> ${confidence}%
+                </div>
+                ` : ''}
+                ${data.description ? `
+                <div style="grid-column: 1 / -1;">
+                    <strong>📝 شرح سند:</strong> ${data.description}
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // به‌روزرسانی وضعیت دکمه‌ها
+    function updateButtonStates(isProcessed) {
+        const showTextBtn = document.getElementById('showTextBtn');
+        const copyTextBtn = document.getElementById('copyTextBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        if (isProcessed) {
+            showTextBtn.style.display = 'block';
+            copyTextBtn.style.display = 'block';
+            downloadBtn.style.display = 'block';
+        } else {
+            showTextBtn.style.display = 'none';
+            copyTextBtn.style.display = 'none';
+            downloadBtn.style.display = 'block';
+        }
+    }
+
+    // توابع مدیریت زوم - نسخه بهبود یافته
+    function zoomIn() {
+        if (currentZoomLevel < 10) {
+            currentZoomLevel++;
+            updateZoom();
+        }
+    }
+
+    function zoomOut() {
+        if (currentZoomLevel > 1) {
+            currentZoomLevel--;
+            updateZoom();
+        }
+    }
+
+    function resetZoom() {
+        currentZoomLevel = 1;
+        updateZoom();
+    }
+
+    function updateZoom() {
+        const contentDisplay = document.getElementById('contentDisplay');
+        if (contentDisplay) {
+            if (currentView === 'original') {
+                // برای تصاویر
+                contentDisplay.className = `image-content zoom-level-${currentZoomLevel}`;
+            } else if (currentView === 'text') {
+                // برای متن
+                contentDisplay.className = `text-content zoom-level-${currentZoomLevel}`;
+            }
+
+            // به‌روزرسانی متن دکمه‌ها
+            document.getElementById('zoomInBtn').textContent = `🔍 بزرگ (${currentZoomLevel * 100}%)`;
+            document.getElementById('zoomOutBtn').textContent = `🔍 کوچک (${currentZoomLevel * 100}%)`;
+            document.getElementById('resetZoomBtn').textContent = `🔄 بازنشانی (${currentZoomLevel * 100}%)`;
+        }
+    }
+
+    // تابع نمایش تمام صفحه
+    function toggleFullScreen() {
+        const contentDisplay = document.getElementById('contentDisplay');
+        const documentModal = document.getElementById('documentModal');
+
+        if (!isFullScreen) {
+            contentDisplay.classList.add('content-zoomed');
+            documentModal.style.zIndex = '2999';
+            isFullScreen = true;
+        } else {
+            contentDisplay.classList.remove('content-zoomed');
+            documentModal.style.zIndex = '2000';
+            isFullScreen = false;
+        }
+    }
+
+    // تابع کپی متن
+    function copyText() {
+        if (currentDocumentData && currentDocumentData.extracted_text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = currentDocumentData.extracted_text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            showNotification('✅ متن با موفقیت کپی شد');
+        } else {
+            showNotification('⚠️ متنی برای کپی موجود نیست');
+        }
+    }
+
+    // تابع دانلود فایل
+    function downloadFile() {
+        if (currentDocumentData && currentDocumentData.original_file_url) {
+            const link = document.createElement('a');
+            link.href = currentDocumentData.original_file_url;
+            link.download = currentDocumentData.file_name;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showNotification('✅ در حال دانلود فایل...');
+        } else {
+            showNotification('⚠️ فایل برای دانلود در دسترس نیست');
+        }
+    }
+
+    // تابع نمایش نوتیفیکیشن
+    function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #27ae60;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            z-index: 4000;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            font-family: Tahoma;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 3000);
+    }
+</script>
