@@ -1,0 +1,15 @@
+{% extends 'ocr_app/base.html' %}
+
+{% block content %}
+<div style="text-align: center; padding: 60px 20px;">
+    <div style="font-size: 72px; margin-bottom: 20px;">🚫</div>
+    <h2 style="color: #e74c3c; margin-bottom: 15px;">دسترسی ممنوع</h2>
+    <p style="color: #7f8c8d; font-size: 16px; margin-bottom: 25px;">
+        شما دسترسی لازم برای مشاهده این صفحه را ندارید.
+    </p>
+    <button onclick="location.href='{% url 'home' %}'" 
+            style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        بازگشت به صفحه اصلی
+    </button>
+</div>
+{% endblock %}

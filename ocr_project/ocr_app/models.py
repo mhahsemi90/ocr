@@ -1,11 +1,48 @@
-from django.db import models
-from django.contrib.auth.models import User
-from django.urls import reverse
-import os
 import uuid
+
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+
+class CustomUser(AbstractUser):
+    MUST_CHANGE_PASSWORD = models.BooleanField(default=True, verbose_name="نیاز به تغییر رمز")
+    department = models.CharField(max_length=100, blank=True, verbose_name="دپارتمان")
+    phone = models.CharField(max_length=15, blank=True, verbose_name="تلفن")
+
+    class Meta:
+        verbose_name = "کاربر"
+        verbose_name_plural = "کاربران"
+
+    def __str__(self):
+        return f"{self.username} - {self.get_full_name()}"
+
+
+class UserPermission(models.Model):
+    PERMISSION_CHOICES = [
+        ('person_management', 'مدیریت افراد'),
+        ('document_upload', 'آپلود اسناد'),
+        ('document_view', 'مشاهده اسناد'),
+        ('search', 'جستجو'),
+        ('ocr_processing', 'پردازش OCR'),
+        ('user_management', 'مدیریت کاربران'),
+        ('system_admin', 'مدیریت سیستم'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='permissions')
+    permission = models.CharField(max_length=50, choices=PERMISSION_CHOICES)
+    granted = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "دسترسی کاربر"
+        verbose_name_plural = "دسترسی‌های کاربران"
+        unique_together = ['user', 'permission']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_permission_display()}"
 
 
 class Person(models.Model):
+    employee_id = models.CharField(max_length=20, unique=True, verbose_name="شماره پرسنلی", null=True, blank=True)
     first_name = models.CharField(max_length=100, verbose_name="نام")
     last_name = models.CharField(max_length=100, verbose_name="نام خانوادگی")
     national_id = models.CharField(max_length=10, unique=True, verbose_name="کد ملی")

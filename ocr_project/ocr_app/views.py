@@ -2,14 +2,20 @@
 import json
 import os
 
+from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
 from django.db.models import Q
 from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import login, authenticate, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.decorators import login_required
+from .decorators import has_permission
+
 from django.conf import settings
 
-from .models import Person, Folder, Document, ScanQueue
+from .models import Person, Folder, Document, ScanQueue, CustomUser, UserPermission
 
 try:
     from .universal_ocr import UniversalOCR
@@ -30,6 +36,126 @@ def simple_ocr(request):
     """صفحه OCR ساده"""
     return render(request, 'ocr_app/home.html')
 
+
+def custom_login(request):
+    if request.user.is_authenticated:
+        if hasattr(request.user, 'MUST_CHANGE_PASSWORD') and request.user.MUST_CHANGE_PASSWORD:
+            return redirect('change_password')
+        return redirect('home')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            if hasattr(user, 'MUST_CHANGE_PASSWORD') and user.MUST_CHANGE_PASSWORD:
+                return redirect('change_password')
+            next_url = request.POST.get('next', 'home')
+            return redirect(next_url)
+        else:
+            # استفاده از messages به جای error
+            messages.error(request, 'نام کاربری یا رمز عبور اشتباه است')
+
+    return render(request, 'ocr_app/login.html')
+
+
+@login_required
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            # به‌روزرسانی وضعیت تغییر رمز در پروفایل کاربر
+            if hasattr(user, 'profile'):
+                user.profile.MUST_CHANGE_PASSWORD = False
+                user.profile.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, 'رمز عبور شما با موفقیت تغییر یافت')
+            return redirect('home')
+        else:
+            messages.error(request, 'لطفا خطاهای زیر را اصلاح کنید')
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'ocr_app/change_password.html', {'form': form})
+
+def custom_logout(request):
+    from django.contrib.auth import logout
+    logout(request)
+    return redirect('login')
+
+
+@login_required
+def user_management(request):
+    if not request.user.is_superuser:
+        return render(request, 'ocr_app/access_denied.html')
+
+    # مدیریت کاربران
+    users = CustomUser.objects.all()
+    return render(request, 'ocr_app/user_management.html', {'users': users})
+
+
+@login_required
+def create_user(request):
+    """ایجاد کاربر جدید"""
+    if not request.user.is_superuser:
+        return render(request, 'ocr_app/access_denied.html')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        email = request.POST.get('email')
+
+        try:
+            user = CustomUser.objects.create_user(
+                username=username,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                MUST_CHANGE_PASSWORD=True
+            )
+            messages.success(request, f'کاربر {username} با موفقیت ایجاد شد')
+            return redirect('user_management')
+        except Exception as e:
+            messages.error(request, f'خطا در ایجاد کاربر: {str(e)}')
+
+    return render(request, 'ocr_app/create_user.html')
+
+
+@login_required
+def user_permissions(request, user_id):
+    """مدیریت دسترسی‌های کاربر"""
+    if not request.user.is_superuser:
+        return render(request, 'ocr_app/access_denied.html')
+
+    target_user = get_object_or_404(CustomUser, id=user_id)  # تغییر از User به CustomUser
+    permission_choices = UserPermission.PERMISSION_CHOICES
+
+    if request.method == 'POST':
+        # حذف دسترسی‌های قبلی
+        UserPermission.objects.filter(user=target_user).delete()
+
+        # اضافه کردن دسترسی‌های جدید
+        selected_permissions = request.POST.getlist('permissions')
+        for permission in selected_permissions:
+            UserPermission.objects.create(
+                user=target_user,
+                permission=permission,
+                granted=True
+            )
+
+        messages.success(request, f'دسترسی‌های کاربر {target_user.username} با موفقیت به‌روزرسانی شد')
+        return redirect('user_management')
+
+    return render(request, 'ocr_app/user_permissions.html', {
+        'target_user': target_user,
+        'permission_choices': permission_choices
+    })
 
 @csrf_exempt
 def extract_text(request):
@@ -127,7 +253,7 @@ def get_person_folders(request, person_id):
     folder_tree = get_folder_tree()
     return JsonResponse({'folders': folder_tree})
 
-
+@has_permission('document_content')
 def document_content(request, document_id):
     """دریافت محتوای سند - نسخه اصلاح شده"""
     document = get_object_or_404(Document, id=document_id)
@@ -154,13 +280,13 @@ def document_content(request, document_id):
         'file_type': document.file_type  # اضافه کردن فیلد file_type
     })
 
-
+@has_permission('person_management')
 def person_management(request):
     """مدیریت افراد - صفحه اصلی"""
     persons = Person.objects.all().order_by('-created_at')
     return render(request, 'ocr_app/person_management.html', {'persons': persons})
 
-
+@has_permission('person_detail')
 def person_detail(request, person_id):
     """جزئیات فرد و نمایش پوشه‌ها و فایل‌ها"""
     person = get_object_or_404(Person, id=person_id)
@@ -287,6 +413,7 @@ def search_documents(request):
     document_text = request.GET.get('document_text', '')
     processing_status = request.GET.get('processing_status', '')
     simple_query = request.GET.get('q', '')
+    employee_id = request.GET.get('employee_id', '')
 
     if simple_query and not any([first_name, last_name, national_id, document_text, processing_status]):
         persons = Person.objects.filter(
@@ -305,7 +432,8 @@ def search_documents(request):
         ).select_related('person', 'folder')
     else:
         persons_query = Person.objects.all()
-
+        if employee_id:
+            persons_query = persons_query.filter(employee_id__icontains=employee_id)
         if first_name:
             persons_query = persons_query.filter(first_name__icontains=first_name)
         if last_name:

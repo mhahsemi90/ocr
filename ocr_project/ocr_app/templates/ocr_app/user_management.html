@@ -1,0 +1,125 @@
+<!-- templates/ocr_app/user_management.html -->
+{% extends 'ocr_app/base.html' %}
+
+{% block page_title %}مدیریت کاربران{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>مدیریت کاربران سیستم</h1>
+
+    <div style="display: flex; gap: 10px;">
+        <button class="btn btn-primary" onclick="location.href='{% url 'create_user' %}'">
+            ➕ افزودن کاربر جدید
+        </button>
+    </div>
+</div>
+
+<!-- لیست کاربران -->
+<div class="users-list">
+    <h3 style="color: #2c3e50; margin-bottom: 20px;">لیست کاربران ({{ users|length }})</h3>
+
+    {% if messages %}
+    <div class="messages" style="margin-bottom: 20px;">
+        {% for message in messages %}
+        <div style="padding: 12px 15px; margin-bottom: 10px; border-radius: 5px;
+                   background: {% if message.tags == 'error' %}#ffeaa7{% elif message.tags == 'success' %}#d4edda{% elif message.tags == 'warning' %}#fff3cd{% else %}#d1ecf1{% endif %};
+                   color: {% if message.tags == 'error' %}#e74c3c{% elif message.tags == 'success' %}#155724{% elif message.tags == 'warning' %}#856404{% else %}#0c5460{% endif %};
+                   border: 1px solid {% if message.tags == 'error' %}#f5c6cb{% elif message.tags == 'success' %}#c3e6cb{% elif message.tags == 'warning' %}#ffeaa7{% else %}#bee5eb{% endif %};">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 150px; gap: 15px; padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #2c3e50;">
+            <div>نام کاربری</div>
+            <div>نام کامل</div>
+            <div>ایمیل</div>
+            <div>وضعیت</div>
+            <div>عملیات</div>
+        </div>
+
+        {% for user_obj in users %}
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 150px; gap: 15px; padding: 15px 20px; border-bottom: 1px solid #f0f0f0; align-items: center;">
+            <div>
+                <strong>{{ user_obj.username }}</strong>
+                {% if user_obj.is_superuser %}
+                <span class="access-badge access-allowed" style="margin-right: 5px;">ادمین</span>
+                {% endif %}
+            </div>
+            <div>{{ user_obj.get_full_name|default:"-" }}</div>
+            <div>{{ user_obj.email|default:"-" }}</div>
+            <div>
+                {% if user_obj.is_active %}
+                <span style="color: #27ae60;">فعال</span>
+                {% else %}
+                <span style="color: #e74c3c;">غیرفعال</span>
+                {% endif %}
+                <br>
+                <small style="color: #7f8c8d;">
+                    {% if user_obj.profile.MUST_CHANGE_PASSWORD %}
+                    نیاز به تغییر رمز
+                    {% else %}
+                    رمز تغییر یافته
+                    {% endif %}
+                </small>
+            </div>
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <button class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="editUser({{ user_obj.id }})">
+                    ✏️ ویرایش
+                </button>
+                <button class="btn btn-info" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="location.href='{% url 'user_permissions' user_obj.id %}'">
+                    🔐 مجوزها
+                </button>
+                {% if user_obj != user %}
+                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;"
+                        onclick="deleteUser({{ user_obj.id }}, '{{ user_obj.username }}')">
+                    🗑️ حذف
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+            <div style="font-size: 48px; margin-bottom: 15px;">👥</div>
+            <h4>هیچ کاربری یافت نشد</h4>
+            <p>می‌توانید کاربر جدیدی اضافه کنید.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // توابع ویرایش و حذف کاربر
+    function editUser(userId) {
+        alert('ویژگی ویرایش کاربر به زودی اضافه خواهد شد');
+    }
+
+    function deleteUser(userId, username) {
+        if (confirm(`آیا از حذف کاربر "${username}" مطمئن هستید؟`)) {
+            alert('ویژگی حذف کاربر به زودی اضافه خواهد شد');
+        }
+    }
+</script>
+
+<style>
+    .users-list {
+        margin-top: 20px;
+    }
+
+    .access-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+    }
+
+    .access-allowed {
+        background: #27ae60;
+        color: white;
+    }
+</style>
+{% endblock %}

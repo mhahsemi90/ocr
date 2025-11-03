@@ -31,4 +31,10 @@ urlpatterns = [
     path('document-content/<int:document_id>/', views.document_content, name='document_content'),
     path('get-root-contents/<int:person_id>/', views.get_root_contents, name='get_root_contents'),
     path('get-person-folders/<int:person_id>/', views.get_person_folders, name='get_person_folders'),
+    path('login/', views.custom_login, name='login'),
+    path('logout/', views.custom_logout, name='logout'),
+    path('change-password/', views.change_password, name='change_password'),
+    path('user-management/', views.user_management, name='user_management'),
+    path('create-user/', views.create_user, name='create_user'),
+    path('user-permissions/<int:user_id>/', views.user_permissions, name='user_permissions'),
 ]
