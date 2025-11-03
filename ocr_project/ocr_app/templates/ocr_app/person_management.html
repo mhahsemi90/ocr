@@ -1,23 +1,36 @@
 <!-- templates/ocr_app/person_management.html -->
 {% extends 'ocr_app/base.html' %}
+{% load permission_tags %}
 
 {% block page_title %}مدیریت افراد و پرونده‌ها{% endblock %}
 
 {% block content %}
 <div class="header">
     <h1>مدیریت افراد</h1>
-
+<!-- موقتاً این رو اضافه کن تا ببینی فیلتر کار می‌کنه -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+        {% if user.is_authenticated and user|has_perm:'person_create' %}
         <button class="btn btn-primary" onclick="showCreatePersonModal()">
             ➕ افزودن فرد جدید
         </button>
-
+        {% else %}
+        <button class="btn btn-primary" disabled style="background: #95a5a6; cursor: not-allowed;">
+            ➕ افزودن فرد جدید
+        </button>
+        {% endif %}
         <div style="display: flex; align-items: center;">
             <input type="text" id="searchInput" placeholder="جستجو بر اساس نام، نام خانوادگی یا کد ملی..."
                    style="padding: 10px 15px; border: 1px solid #ddd; border-radius: 5px; margin-left: 10px; width: 300px; font-size: 14px;">
+
+            {% if user.is_authenticated and user|has_perm:'search_persons' %}
             <button class="btn btn-success" onclick="searchPersons()">
                 🔍 جستجو
             </button>
+            {% else %}
+            <button class="btn btn-success" disabled style="background: #95a5a6; cursor: not-allowed;">
+                🔍 جستجو
+            </button>
+            {% endif %}
             <button class="btn" onclick="clearSearch()" style="background: #95a5a6; color: white; margin-left: 10px;">
                 پاک کردن
             </button>
@@ -28,7 +41,8 @@
 <!-- بخش جستجو و نتایج -->
 <div id="searchSection">
     <!-- پیام خوشامدگویی -->
-    <div id="welcomeMessage" style="text-align: center; padding: 60px 20px; background: white; border-radius: 10px; margin-bottom: 20px;">
+    <div id="welcomeMessage"
+         style="text-align: center; padding: 60px 20px; background: white; border-radius: 10px; margin-bottom: 20px;">
         <div style="font-size: 72px; margin-bottom: 20px;">🔍</div>
         <h2 style="color: #2c3e50; margin-bottom: 15px;">به سیستم مدیریت اسناد خوش آمدید</h2>
         <p style="color: #7f8c8d; font-size: 16px; line-height: 1.6;">
@@ -40,7 +54,8 @@
     <!-- نتایج جستجو -->
     <div id="searchResults" style="display: none;">
         <h3 style="color: #2c3e50; margin-bottom: 20px;">نتایج جستجو</h3>
-        <div class="persons-grid" id="personsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
+        <div class="persons-grid" id="personsGrid"
+             style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;">
             <!-- نتایج با JavaScript پر می‌شوند -->
         </div>
 
@@ -53,8 +68,9 @@
 </div>
 
 <!-- Modal ایجاد فرد جدید -->
-<div id="createPersonModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000;">
-    <div style="background: white; width: 500px; margin: 100px auto; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+<div id="createPersonModal"
+     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto;">
+    <div style="background: white; width: 500px; margin: 50px auto; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative;">
         <h3 style="color: #2c3e50; margin-bottom: 20px;">افزودن فرد جدید</h3>
         <form id="createPersonForm">
             <div style="margin-bottom: 15px;">
@@ -75,16 +91,23 @@
                        style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
             </div>
 
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #555;">شماره پرسنلی:</label>
+                <input type="text" name="employee_id" placeholder="شماره پرسنلی"
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 5px; color: #555;">شرح پرونده:</label>
                 <textarea name="case_description" placeholder="شرح پرونده"
                           style="width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
             </div>
 
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: 10px; position: sticky; bottom: 0; background: white; padding-top: 15px; border-top: 1px solid #eee;">
                 <button type="submit" class="btn btn-primary" style="flex: 1;">💾 ذخیره</button>
                 <button type="button" class="btn" onclick="hideCreatePersonModal()"
-                        style="flex: 1; background: #95a5a6; color: white;">❌ لغو</button>
+                        style="flex: 1; background: #95a5a6; color: white;">❌ لغو
+                </button>
             </div>
         </form>
     </div>
@@ -118,7 +141,6 @@
         fetch(`/search/?q=${encodeURIComponent(query)}&type=people`)
             .then(response => response.text())
             .then(html => {
-                // اینجا باید HTML برگشتی را parse کنیم و فقط بخش نتایج را نمایش دهیم
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = html;
 
@@ -173,7 +195,6 @@
             if (result.success) {
                 alert('فرد با موفقیت ذخیره شد');
                 hideCreatePersonModal();
-                // اگر در حال جستجو هستیم، جستجو را مجدد انجام دهیم
                 if (document.getElementById('searchResults').style.display === 'block') {
                     searchPersons();
                 }
@@ -181,8 +202,8 @@
                 alert('خطا: ' + result.error);
             }
         } catch (error) {
-            alert('خطا در ارتباط با سرور');
             console.error('Error:', error);
+            alert('خطا در ارتباط با سرور');
         }
     };
 

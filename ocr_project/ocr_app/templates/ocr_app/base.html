@@ -1,5 +1,6 @@
 <!-- templates/ocr_app/base.html -->
 <!DOCTYPE html>
+{% load permission_tags %}
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
@@ -240,7 +241,7 @@
         <ul class="sidebar-menu">
             <!-- منوی مدیریت افراد -->
             <li class="menu-item">
-                {% if user.is_authenticated %}
+                {% if user.is_authenticated and user|has_perm:'person_management' %}
                 <a href="{% url 'home' %}" class="menu-link {% if request.resolver_match.url_name == 'person_management' or request.path == '/' %}active{% endif %}">
                     <span class="menu-icon">👥</span>
                     <span class="menu-text">مدیریت افراد</span>
@@ -256,7 +257,7 @@
 
             <!-- منوی جستجو -->
             <li class="menu-item">
-                {% if user.is_authenticated %}
+                {% if user.is_authenticated and user|has_perm:'search_persons' and user|has_perm:'search_documents' %}
                 <a href="{% url 'search_documents' %}" class="menu-link {% if request.resolver_match.url_name == 'search_documents' %}active{% endif %}">
                     <span class="menu-icon">🔍</span>
                     <span class="menu-text">جستجوی پیشرفته</span>
@@ -272,7 +273,7 @@
 
             <!-- منوی OCR ساده -->
             <li class="menu-item">
-                {% if user.is_authenticated %}
+                {% if user.is_authenticated and user|has_perm:'simple_ocr' %}
                 <a href="{% url 'simple_ocr' %}" class="menu-link {% if request.resolver_match.url_name == 'simple_ocr' %}active{% endif %}">
                     <span class="menu-icon">📄</span>
                     <span class="menu-text">OCR ساده</span>
@@ -323,7 +324,7 @@
             {% if user.is_authenticated %}
             <div class="user-welcome">
                 خوش آمدید، <strong>{{ user.get_full_name|default:user.username }}</strong>
-                {% if user.profile.MUST_CHANGE_PASSWORD %}
+                {% if user.MUST_CHANGE_PASSWORD %}
                 <span style="color: #e74c3c; margin-right: 10px;">⚠️ لطفا رمز عبور خود را تغییر دهید</span>
                 {% endif %}
             </div>

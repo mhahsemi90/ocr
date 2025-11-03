@@ -20,12 +20,18 @@ class CustomUser(AbstractUser):
 class UserPermission(models.Model):
     PERMISSION_CHOICES = [
         ('person_management', 'مدیریت افراد'),
+        ('person_detail', 'مشاهده جزئیات افراد'),
+        ('person_create', 'ایجاد فرد جدید'),
+        ('folder_management', 'مدیریت پوشه‌ها'),
         ('document_upload', 'آپلود اسناد'),
         ('document_view', 'مشاهده اسناد'),
-        ('search', 'جستجو'),
+        ('document_content', 'مشاهده محتوای اسناد'),
+        ('search_persons', 'جستجوی افراد'),
+        ('search_documents', 'جستجوی اسناد'),
         ('ocr_processing', 'پردازش OCR'),
         ('user_management', 'مدیریت کاربران'),
         ('system_admin', 'مدیریت سیستم'),
+        ('simple_ocr', 'دسترسی به OCR ساده'),
     ]
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='permissions')

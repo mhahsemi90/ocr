@@ -3,22 +3,25 @@ import json
 import os
 
 from django.contrib import messages
+from django.contrib.auth import login, authenticate, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.core.files.storage import FileSystemStorage
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import login, authenticate, update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth.decorators import login_required
-from .decorators import has_permission
 
-from django.conf import settings
-
+from .decorators import (
+    require_person_management, require_person_detail, require_person_create,
+    require_folder_management, require_document_upload, require_document_view,
+    require_search_persons, require_search_documents, require_simple_ocr
+)
 from .models import Person, Folder, Document, ScanQueue, CustomUser, UserPermission
 
 try:
     from .universal_ocr import UniversalOCR
+
     ocr_engine = UniversalOCR()
     OCR_AVAILABLE = True
     print("✅ UniversalOCR با موفقیت لود شد")
@@ -27,11 +30,13 @@ except ImportError as e:
     OCR_AVAILABLE = False
 
 
+@require_person_management
 def home(request):
     """صفحه اصلی - مدیریت افراد"""
     return person_management(request)
 
 
+@require_simple_ocr
 def simple_ocr(request):
     """صفحه OCR ساده"""
     return render(request, 'ocr_app/home.html')
@@ -41,7 +46,7 @@ def custom_login(request):
     if request.user.is_authenticated:
         if hasattr(request.user, 'MUST_CHANGE_PASSWORD') and request.user.MUST_CHANGE_PASSWORD:
             return redirect('change_password')
-        return redirect('home')
+        return redirect('home')  # اضافه کردن redirect به home
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -52,10 +57,13 @@ def custom_login(request):
             login(request, user)
             if hasattr(user, 'MUST_CHANGE_PASSWORD') and user.MUST_CHANGE_PASSWORD:
                 return redirect('change_password')
+
             next_url = request.POST.get('next', 'home')
+            if not next_url:
+                next_url = 'home'
+
             return redirect(next_url)
         else:
-            # استفاده از messages به جای error
             messages.error(request, 'نام کاربری یا رمز عبور اشتباه است')
 
     return render(request, 'ocr_app/login.html')
@@ -67,10 +75,8 @@ def change_password(request):
         form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             user = form.save()
-            # به‌روزرسانی وضعیت تغییر رمز در پروفایل کاربر
-            if hasattr(user, 'profile'):
-                user.profile.MUST_CHANGE_PASSWORD = False
-                user.profile.save()
+            user.MUST_CHANGE_PASSWORD = False
+            user.save()
             update_session_auth_hash(request, user)
             messages.success(request, 'رمز عبور شما با موفقیت تغییر یافت')
             return redirect('home')
@@ -80,6 +86,7 @@ def change_password(request):
         form = PasswordChangeForm(request.user)
 
     return render(request, 'ocr_app/change_password.html', {'form': form})
+
 
 def custom_logout(request):
     from django.contrib.auth import logout
@@ -133,7 +140,7 @@ def user_permissions(request, user_id):
     if not request.user.is_superuser:
         return render(request, 'ocr_app/access_denied.html')
 
-    target_user = get_object_or_404(CustomUser, id=user_id)  # تغییر از User به CustomUser
+    target_user = get_object_or_404(CustomUser, id=user_id)
     permission_choices = UserPermission.PERMISSION_CHOICES
 
     if request.method == 'POST':
@@ -156,6 +163,7 @@ def user_permissions(request, user_id):
         'target_user': target_user,
         'permission_choices': permission_choices
     })
+
 
 @csrf_exempt
 def extract_text(request):
@@ -253,7 +261,8 @@ def get_person_folders(request, person_id):
     folder_tree = get_folder_tree()
     return JsonResponse({'folders': folder_tree})
 
-@has_permission('document_content')
+
+@require_document_view
 def document_content(request, document_id):
     """دریافت محتوای سند - نسخه اصلاح شده"""
     document = get_object_or_404(Document, id=document_id)
@@ -280,13 +289,13 @@ def document_content(request, document_id):
         'file_type': document.file_type  # اضافه کردن فیلد file_type
     })
 
-@has_permission('person_management')
+@require_person_management
 def person_management(request):
     """مدیریت افراد - صفحه اصلی"""
     persons = Person.objects.all().order_by('-created_at')
     return render(request, 'ocr_app/person_management.html', {'persons': persons})
 
-@has_permission('person_detail')
+@require_person_detail
 def person_detail(request, person_id):
     """جزئیات فرد و نمایش پوشه‌ها و فایل‌ها"""
     person = get_object_or_404(Person, id=person_id)
@@ -300,6 +309,7 @@ def person_detail(request, person_id):
     })
 
 
+@require_person_create
 @csrf_exempt
 def create_person(request):
     """ایجاد فرد جدید"""
@@ -311,6 +321,7 @@ def create_person(request):
                 defaults={
                     'first_name': data['first_name'],
                     'last_name': data['last_name'],
+                    'employee_id': data.get('employee_id', ''),
                     'case_description': data.get('case_description', '')
                 }
             )
@@ -327,6 +338,7 @@ def create_person(request):
             return JsonResponse({'success': False, 'error': str(e)})
 
 
+@require_folder_management
 @csrf_exempt
 def create_folder(request, person_id):
     """ایجاد پوشه جدید"""
@@ -347,6 +359,7 @@ def create_folder(request, person_id):
             return JsonResponse({'success': False, 'error': str(e)})
 
 
+@require_document_upload
 @csrf_exempt
 def upload_documents(request, person_id):
     """آپلود اسناد جدید"""
@@ -401,67 +414,98 @@ def get_folder_contents(request, folder_id):
     })
 
 
+@require_search_persons
+@require_search_documents
 def search_documents(request):
-    """جستجوی پیشرفته"""
+    """جستجوی پیشرفته با دو بخش مجزا"""
+    search_type = request.GET.get('search_type', 'persons')
+
+    # اگر پارامتر جستجو وجود ندارد، صفحه جستجو را نمایش بده
     if not any(param in request.GET for param in
-               ['first_name', 'last_name', 'national_id', 'document_text', 'q', 'processing_status']):
+               ['first_name', 'last_name', 'national_id', 'employee_id', 'document_text', 'q', 'processing_status',
+                'file_type', 'search_type']):
         return render(request, 'ocr_app/search.html')
 
-    first_name = request.GET.get('first_name', '')
-    last_name = request.GET.get('last_name', '')
-    national_id = request.GET.get('national_id', '')
-    document_text = request.GET.get('document_text', '')
-    processing_status = request.GET.get('processing_status', '')
-    simple_query = request.GET.get('q', '')
-    employee_id = request.GET.get('employee_id', '')
+    persons = []
+    documents = []
+    query = ""
 
-    if simple_query and not any([first_name, last_name, national_id, document_text, processing_status]):
-        persons = Person.objects.filter(
-            Q(first_name__icontains=simple_query) |
-            Q(last_name__icontains=simple_query) |
-            Q(national_id__icontains=simple_query) |
-            Q(case_description__icontains=simple_query)
-        ).distinct()
+    if search_type == 'persons':
+        # جستجو در افراد
+        first_name = request.GET.get('first_name', '')
+        last_name = request.GET.get('last_name', '')
+        national_id = request.GET.get('national_id', '')
+        employee_id = request.GET.get('employee_id', '')
+        simple_query = request.GET.get('q', '')
 
-        documents = Document.objects.filter(
-            Q(file_name__icontains=simple_query) |
-            Q(description__icontains=simple_query) |
-            Q(extracted_text__icontains=simple_query) |
-            Q(person__first_name__icontains=simple_query) |
-            Q(person__last_name__icontains=simple_query)
-        ).select_related('person', 'folder')
-    else:
         persons_query = Person.objects.all()
-        if employee_id:
-            persons_query = persons_query.filter(employee_id__icontains=employee_id)
-        if first_name:
-            persons_query = persons_query.filter(first_name__icontains=first_name)
-        if last_name:
-            persons_query = persons_query.filter(last_name__icontains=last_name)
-        if national_id:
-            persons_query = persons_query.filter(national_id__icontains=national_id)
 
-        persons = persons_query.distinct()
+        if simple_query and not any([first_name, last_name, national_id, employee_id]):
+            # جستجوی ساده
+            persons_query = persons_query.filter(
+                Q(first_name__icontains=simple_query) |
+                Q(last_name__icontains=simple_query) |
+                Q(national_id__icontains=simple_query) |
+                Q(employee_id__icontains=simple_query) |
+                Q(case_description__icontains=simple_query)
+            )
+        else:
+            # جستجوی پیشرفته
+            if first_name:
+                persons_query = persons_query.filter(first_name__icontains=first_name)
+            if last_name:
+                persons_query = persons_query.filter(last_name__icontains=last_name)
+            if national_id:
+                persons_query = persons_query.filter(national_id__icontains=national_id)
+            if employee_id:
+                persons_query = persons_query.filter(employee_id__icontains=employee_id)
+
+        persons = persons_query.distinct().order_by('-created_at')
+        query = simple_query or f"{first_name} {last_name}".strip() or national_id or employee_id
+
+    else:
+        # جستجو در اسناد
+        document_text = request.GET.get('document_text', '')
+        processing_status = request.GET.get('processing_status', '')
+        file_type = request.GET.get('file_type', '')
+        simple_query = request.GET.get('q', '')
 
         documents_query = Document.objects.all()
 
-        if document_text:
+        if simple_query and not document_text:
+            # جستجوی ساده
+            documents_query = documents_query.filter(
+                Q(extracted_text__icontains=simple_query) |
+                Q(file_name__icontains=simple_query) |
+                Q(description__icontains=simple_query) |
+                Q(person__first_name__icontains=simple_query) |
+                Q(person__last_name__icontains=simple_query)
+            )
+        elif document_text:
+            # جستجوی پیشرفته
             documents_query = documents_query.filter(
                 Q(extracted_text__icontains=document_text) |
                 Q(file_name__icontains=document_text) |
                 Q(description__icontains=document_text)
             )
 
+        # فیلتر وضعیت پردازش
         if processing_status == 'processed':
             documents_query = documents_query.filter(ocr_processed=True)
         elif processing_status == 'pending':
             documents_query = documents_query.filter(ocr_processed=False)
 
-        documents = documents_query.select_related('person', 'folder')
+        # فیلتر نوع فایل
+        if file_type:
+            documents_query = documents_query.filter(file_type__iexact=file_type)
+
+        documents = documents_query.select_related('person', 'folder').order_by('-created_at')
+        query = simple_query or document_text
 
     return render(request, 'ocr_app/search_results.html', {
         'persons': persons,
         'documents': documents,
         'search_params': request.GET,
-        'query': simple_query or document_text or f"{first_name} {last_name}".strip() or national_id
+        'query': query,
+        'search_type': search_type
     })
