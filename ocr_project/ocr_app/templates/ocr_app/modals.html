@@ -350,7 +350,7 @@
         const fileExtension = data.file_extension || data.file_type || data.file_name.split('.').pop().toLowerCase();
 
         if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(fileExtension)) {
-            // نمایش تصویر با کانتینر مناسب
+            // نمایش تصویر
             if (data.original_file_url) {
                 documentContent.innerHTML = `
                     <div class="image-container">
@@ -368,9 +368,16 @@
                 showFileNotAvailable();
             }
         } else if (fileExtension === 'pdf') {
-            // نمایش گزینه‌های PDF بدون iframe
+        // نمایش گزینه‌های PDF
             if (data.original_file_url) {
                 showPDFOptions(data.original_file_url);
+            } else {
+                showFileNotAvailable();
+            }
+        } else if (['doc', 'docx'].includes(fileExtension)) {
+            // نمایش گزینه‌های Word
+            if (data.original_file_url) {
+                showWordOptions(data.original_file_url, data.file_name);
             } else {
                 showFileNotAvailable();
             }
@@ -380,6 +387,55 @@
         }
     }
 
+    // اضافه کردن تابع نمایش گزینه‌های Word
+    function showWordOptions(wordUrl, fileName) {
+        const documentContent = document.getElementById('documentContent');
+
+        documentContent.innerHTML = `
+            <div class="word-download-option" style="text-align: center; padding: 40px;">
+                <div style="font-size: 64px; margin-bottom: 20px;">📄</div>
+                <h4 style="color: #2c3e50; margin-bottom: 10px;">فایل Word</h4>
+                <p style="color: #7f8c8d; margin-bottom: 20px;">برای مشاهده فایل Word از گزینه‌های زیر استفاده کنید:</p>
+
+            <div class="word-option-buttons" style="display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+                <button onclick="downloadWord('${wordUrl}', '${fileName}')"
+                        class="btn"
+                        style="background: #3498db; color: white; padding: 12px 20px;">
+                    📥 دانلود Word
+                </button>
+                <button onclick="viewWordInNewTab('${wordUrl}')"
+                        class="btn"
+                        style="background: #27ae60; color: white; padding: 12px 20px;">
+                    👁️ مشاهده در تب جدید
+                </button>
+            </div>
+
+            <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-right: 4px solid #f39c12;">
+                <p style="margin: 0; color: #e67e22; font-size: 14px;">
+                    💡 <strong>راهنمایی:</strong> فایل Word در همین پنجره نمایش داده نمی‌شود.
+                    برای مشاهده فایل، آن را دانلود کنید یا در تب جدید باز کنید.
+                </p>
+            </div>
+        </div>
+        `;
+    }
+
+    // مشاهده Word در تب جدید
+    function viewWordInNewTab(wordUrl) {
+        window.open(wordUrl, '_blank');
+        showNotification('📄 در حال باز کردن فایل Word در تب جدید...');
+    }
+
+    // دانلود Word
+    function downloadWord(wordUrl, fileName) {
+        const link = document.createElement('a');
+        link.href = wordUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showNotification('✅ در حال دانلود فایل Word...');
+    }
     // نمایش گزینه‌های PDF
     function showPDFOptions(pdfUrl) {
         const documentContent = document.getElementById('documentContent');

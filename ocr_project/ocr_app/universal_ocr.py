@@ -8,6 +8,7 @@ import io
 import magic
 import tempfile
 import shutil
+from docx import Document
 
 
 def detect_file_type(file_path):
@@ -22,6 +23,9 @@ def detect_file_type(file_path):
             return 'image'
         elif file_type == 'text/plain':
             return 'text'
+        elif file_type in ['application/msword',
+                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document']:
+            return 'word'
         else:
             return 'unknown'
     except:
@@ -32,6 +36,8 @@ def detect_file_type(file_path):
             return 'image'
         elif ext in ['.txt', '.text']:
             return 'text'
+        elif ext in ['.doc', '.docx']:
+            return 'word'
         else:
             return 'unknown'
 
@@ -120,6 +126,31 @@ def extract_text_from_pdf(pdf_path):
         return f"خطا در پردازش PDF: {str(e)}"
 
 
+def extract_text_from_word(word_path):
+    """استخراج متن از فایل Word"""
+    try:
+        doc = Document(word_path)
+        full_text = []
+
+        # استخراج متن از پاراگراف‌ها
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                full_text.append(paragraph.text)
+
+        # استخراج متن از جداول
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        full_text.append(cell.text)
+
+        text = '\n'.join(full_text)
+        return text.strip() if text.strip() else "📝 متنی در فایل Word یافت نشد"
+
+    except Exception as e:
+        return f"خطا در پردازش فایل Word: {str(e)}"
+
+
 def extract_text_from_text_file(file_path):
     """استخراج متن از فایل متنی"""
     try:
@@ -200,6 +231,15 @@ class UniversalOCR:
                     'type': 'pdf',
                     'confidence': 1.0,
                     'file_type': 'pdf'
+                }
+
+            elif file_type == 'word':
+                text = extract_text_from_word(file_path)
+                return {
+                    'text': text if text.strip() else "📝 متنی در فایل Word یافت نشد",
+                    'type': 'word',
+                    'confidence': 1.0,
+                    'file_type': 'word'
                 }
 
             elif file_type == 'text':
