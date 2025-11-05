@@ -81,7 +81,7 @@ def safe_image_read(image_path):
         return None
 
 
-def extract_text_from_pdf(pdf_path):
+def extract_text_from_pdf(pdf_path,reader):
     """استخراج متن از PDF"""
     try:
         doc = fitz.open(pdf_path)
@@ -105,7 +105,6 @@ def extract_text_from_pdf(pdf_path):
                 cv2.imwrite(temp_path, img_cv)
 
                 # استفاده از OCR ساده
-                reader = easyocr.Reader(['fa', 'en'], gpu=False)
                 results = reader.readtext(temp_path, detail=1)
                 texts = []
                 for (bbox, text_ocr, confidence) in results:
@@ -211,7 +210,14 @@ def simple_preprocess(image_path):
 class UniversalOCR:
     def __init__(self):
         try:
-            self.reader = easyocr.Reader(['fa', 'en'], gpu=False)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_path = os.path.join(current_dir, '..', 'easyocr_models')
+            self.reader = easyocr.Reader(
+                ['fa', 'en'],
+                gpu=False,
+                download_enabled=False,
+                model_storage_directory=model_path
+            )
             self.ocr_available = True
             print("✅ EasyOCR با موفقیت راه‌اندازی شد")
         except Exception as e:
@@ -225,7 +231,7 @@ class UniversalOCR:
             print(f"تشخیص نوع فایل: {file_type}")
 
             if file_type == 'pdf':
-                text = extract_text_from_pdf(file_path)
+                text = extract_text_from_pdf(file_path,self.reader)
                 return {
                     'text': text if text.strip() else "📝 متنی در PDF یافت نشد",
                     'type': 'pdf',
